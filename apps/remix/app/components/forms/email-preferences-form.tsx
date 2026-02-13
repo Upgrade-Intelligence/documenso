@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trans } from '@lingui/react/macro';
-import type { TeamGlobalSettings } from '@prisma/client';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -8,6 +7,7 @@ import { useCurrentOrganisation } from '@documenso/lib/client-only/providers/org
 import { FROM_ADDRESS } from '@documenso/lib/constants/email';
 import {
   DEFAULT_DOCUMENT_EMAIL_SETTINGS,
+  type TDocumentEmailSettings,
   ZDocumentEmailSettingsSchema,
 } from '@documenso/lib/types/document-email';
 import { trpc } from '@documenso/trpc/react';
@@ -40,10 +40,11 @@ const ZEmailPreferencesFormSchema = z.object({
 
 export type TEmailPreferencesFormSchema = z.infer<typeof ZEmailPreferencesFormSchema>;
 
-type SettingsSubset = Pick<
-  TeamGlobalSettings,
-  'emailId' | 'emailReplyTo' | 'emailDocumentSettings'
->;
+type SettingsSubset = {
+  emailId: string | null;
+  emailReplyTo: string | null;
+  emailDocumentSettings: TDocumentEmailSettings | null;
+};
 
 export type EmailPreferencesFormProps = {
   settings: SettingsSubset;
@@ -74,7 +75,7 @@ export const EmailPreferencesForm = ({
       perPage: 100,
     });
 
-  const emails = emailData?.data || [];
+  const emails = (emailData?.data ?? []) as Array<{ id: string; email: string }>;
 
   return (
     <Form {...form}>

@@ -1,12 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trans, useLingui } from '@lingui/react/macro';
-import type { SubscriptionClaim } from '@prisma/client';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import type { z } from 'zod';
 
 import type { TLicenseClaim } from '@documenso/lib/types/license';
-import { SUBSCRIPTION_CLAIM_FEATURE_FLAGS } from '@documenso/lib/types/subscription';
+import {
+  SUBSCRIPTION_CLAIM_FEATURE_FLAGS,
+  type TClaimFlags,
+} from '@documenso/lib/types/subscription';
 import { ZCreateSubscriptionClaimRequestSchema } from '@documenso/trpc/server/admin-router/create-subscription-claim.types';
 import { Alert, AlertDescription } from '@documenso/ui/primitives/alert';
 import { Checkbox } from '@documenso/ui/primitives/checkbox';
@@ -20,6 +22,18 @@ import {
   FormMessage,
 } from '@documenso/ui/primitives/form/form';
 import { Input } from '@documenso/ui/primitives/input';
+
+type SubscriptionClaim = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  name: string;
+  locked: boolean;
+  teamCount: number;
+  memberCount: number;
+  envelopeItemCount: number;
+  flags: TClaimFlags;
+};
 
 export type SubscriptionClaimFormValues = z.infer<typeof ZCreateSubscriptionClaimRequestSchema>;
 
