@@ -72,6 +72,8 @@ export type SignInFormProps = {
   isGoogleSSOEnabled?: boolean;
   isMicrosoftSSOEnabled?: boolean;
   isOIDCSSOEnabled?: boolean;
+  isGoogleOAuthOnly?: boolean;
+  allowedGoogleAuthDomain?: string;
   oidcProviderLabel?: string;
   returnTo?: string;
 };
@@ -82,6 +84,8 @@ export const SignInForm = ({
   isGoogleSSOEnabled,
   isMicrosoftSSOEnabled,
   isOIDCSSOEnabled,
+  isGoogleOAuthOnly,
+  allowedGoogleAuthDomain,
   oidcProviderLabel,
   returnTo,
 }: SignInFormProps) => {
@@ -98,7 +102,12 @@ export const SignInForm = ({
     'totp' | 'backup'
   >('totp');
 
-  const hasSocialAuthEnabled = isGoogleSSOEnabled || isMicrosoftSSOEnabled || isOIDCSSOEnabled;
+  const isPasswordAuthEnabled = !isGoogleOAuthOnly;
+  const isPasskeyAuthEnabled = !isGoogleOAuthOnly;
+  const showGoogleSignIn = Boolean(isGoogleSSOEnabled);
+  const showMicrosoftSignIn = Boolean(!isGoogleOAuthOnly && isMicrosoftSSOEnabled);
+  const showOidcSignIn = Boolean(!isGoogleOAuthOnly && isOIDCSSOEnabled);
+  const hasSocialAuthEnabled = showGoogleSignIn || showMicrosoftSignIn || showOidcSignIn;
 
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
 
@@ -250,11 +259,11 @@ export const SignInForm = ({
           AuthenticationErrorCode.InvalidTwoFactorCode,
           () => msg`The two-factor authentication code provided is incorrect.`,
         )
-        .otherwise(() => handleFallbackErrorMessages(error.code));
+        .otherwise(() => error.userMessage ?? handleFallbackErrorMessages(error.code));
 
       toast({
         title: _(msg`Unable to sign in`),
-        description: _(errorMessage),
+        description: typeof errorMessage === 'string' ? errorMessage : _(errorMessage),
         variant: 'destructive',
       });
     }
@@ -314,13 +323,55 @@ export const SignInForm = ({
     const params = new URLSearchParams(hash);
 
     const email = params.get('email');
+    const authErrorMessage = params.get('authErrorMessage');
 
     if (email) {
       form.setValue('email', email);
     }
 
+    if (authErrorMessage) {
+      toast({
+        title: _(msg`Unable to sign in`),
+        description: authErrorMessage,
+        variant: 'destructive',
+      });
+    }
+
     setIsEmbeddedRedirect(params.get('embedded') === 'true');
-  }, [form]);
+  }, [_, form, toast]);
+
+  if (isGoogleOAuthOnly) {
+    return (
+      <div className={cn('flex w-full flex-col gap-y-4', className)}>
+        <p className="text-sm text-muted-foreground">
+          <Trans>
+            Sign in with your {allowedGoogleAuthDomain ? `@${allowedGoogleAuthDomain} ` : ''}
+            Google account.
+          </Trans>
+        </p>
+
+        {!isEmbeddedRedirect && showGoogleSignIn && (
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="border bg-background text-muted-foreground"
+            disabled={isSubmitting}
+            onClick={onSignInWithGoogleClick}
+          >
+            <FcGoogle className="mr-2 h-5 w-5" />
+            <Trans>Continue with Google</Trans>
+          </Button>
+        )}
+
+        {!showGoogleSignIn && (
+          <p className="text-sm text-muted-foreground">
+            <Trans>Google Sign-In is not configured yet.</Trans>
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -398,7 +449,7 @@ export const SignInForm = ({
                 </div>
               )}
 
-              {isGoogleSSOEnabled && (
+              {showGoogleSignIn && (
                 <Button
                   type="button"
                   size="lg"
@@ -412,7 +463,7 @@ export const SignInForm = ({
                 </Button>
               )}
 
-              {isMicrosoftSSOEnabled && (
+              {showMicrosoftSignIn && (
                 <Button
                   type="button"
                   size="lg"
@@ -430,7 +481,7 @@ export const SignInForm = ({
                 </Button>
               )}
 
-              {isOIDCSSOEnabled && (
+              {showOidcSignIn && (
                 <Button
                   type="button"
                   size="lg"
@@ -446,18 +497,20 @@ export const SignInForm = ({
             </>
           )}
 
-          <Button
-            type="button"
-            size="lg"
-            variant="outline"
-            disabled={isSubmitting}
-            loading={isPasskeyLoading}
-            className="border bg-background text-muted-foreground"
-            onClick={onSignInWithPasskey}
-          >
-            {!isPasskeyLoading && <KeyRoundIcon className="-ml-1 mr-1 h-5 w-5" />}
-            <Trans>Passkey</Trans>
-          </Button>
+          {isPasskeyAuthEnabled && (
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              disabled={isSubmitting}
+              loading={isPasskeyLoading}
+              className="border bg-background text-muted-foreground"
+              onClick={onSignInWithPasskey}
+            >
+              {!isPasskeyLoading && <KeyRoundIcon className="-ml-1 mr-1 h-5 w-5" />}
+              <Trans>Passkey</Trans>
+            </Button>
+          )}
         </fieldset>
       </form>
 

@@ -5,6 +5,7 @@ import { isoBase64URL } from '@simplewebauthn/server/helpers';
 import { Hono } from 'hono';
 
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { assertGoogleOAuthOnlyDisabled } from '@documenso/lib/server-only/auth/get-auth-policy';
 import type { TAuthenticationResponseJSONSchema } from '@documenso/lib/types/webauthn';
 import { ZAuthenticationResponseJSONSchema } from '@documenso/lib/types/webauthn';
 import { getAuthenticatorOptions } from '@documenso/lib/utils/authenticator';
@@ -19,6 +20,8 @@ export const passkeyRoute = new Hono<HonoAuthContext>()
    * Authorize endpoint.
    */
   .post('/authorize', sValidator('json', ZPasskeyAuthorizeSchema), async (c) => {
+    assertGoogleOAuthOnlyDisabled();
+
     const requestMetadata = c.get('requestMetadata');
 
     const { csrfToken, credential } = c.req.valid('json');

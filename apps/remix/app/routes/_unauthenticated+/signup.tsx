@@ -5,6 +5,7 @@ import {
   IS_MICROSOFT_SSO_ENABLED,
   IS_OIDC_SSO_ENABLED,
 } from '@documenso/lib/constants/auth';
+import { isGoogleOAuthOnlyEnabled } from '@documenso/lib/server-only/auth/get-auth-policy';
 import { env } from '@documenso/lib/utils/env';
 import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-valid-return-to';
 
@@ -25,7 +26,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const isMicrosoftSSOEnabled = IS_MICROSOFT_SSO_ENABLED;
   const isOIDCSSOEnabled = IS_OIDC_SSO_ENABLED;
 
-  if (NEXT_PUBLIC_DISABLE_SIGNUP === 'true') {
+  if (NEXT_PUBLIC_DISABLE_SIGNUP === 'true' || isGoogleOAuthOnlyEnabled()) {
     throw redirect('/signin');
   }
 

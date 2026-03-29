@@ -1,0 +1,44 @@
+services:
+  database:
+    restart: unless-stopped
+
+  documenso:
+    image: sign-documenso:local
+    build:
+      context: /opt/documenso/app
+      dockerfile: /opt/documenso/app/docker/Dockerfile
+    restart: unless-stopped
+    expose:
+      - 3000
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  caddy:
+    image: caddy:2.10-alpine
+    depends_on:
+      documenso:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      - DOCUMENSO_HOSTNAME=${DOCUMENSO_HOSTNAME:?err}
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /opt/documenso/app/docker/azure/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -4,6 +4,10 @@ import type { Context } from 'hono';
 import { deleteCookie } from 'hono/cookie';
 
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import {
+  assertGoogleOAuthEmailAllowed,
+  assertGoogleOAuthProviderAllowed,
+} from '@documenso/lib/server-only/auth/get-auth-policy';
 import { onCreateUserHook } from '@documenso/lib/server-only/user/create-user';
 import { isValidReturnTo, normalizeReturnTo } from '@documenso/lib/utils/is-valid-return-to';
 import { prisma } from '@documenso/prisma';
@@ -25,6 +29,9 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
 
   const { email, name, sub, accessToken, accessTokenExpiresAt, idToken, redirectPath } =
     await validateOauth({ c, clientOptions });
+
+  assertGoogleOAuthProviderAllowed(clientOptions.id);
+  assertGoogleOAuthEmailAllowed(email);
 
   // Find the account if possible.
   const existingAccount = await prisma.account.findFirst({
@@ -198,18 +205,12 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
   const claims = decodeIdToken(tokens.idToken()) as Record<string, unknown>;
 
   const email = claims.email;
-  const name = claims.name;
+  const nameClaim = claims.name;
   const sub = claims.sub;
 
   if (typeof email !== 'string') {
     throw new AppError(AuthenticationErrorCode.InvalidRequest, {
       message: 'Missing email',
-    });
-  }
-
-  if (typeof name !== 'string') {
-    throw new AppError(AuthenticationErrorCode.InvalidRequest, {
-      message: 'Missing name',
     });
   }
 
@@ -224,6 +225,11 @@ export const validateOauth = async (options: HandleOAuthCallbackUrlOptions) => {
       message: 'Account email is not verified',
     });
   }
+
+  const name =
+    typeof nameClaim === 'string' && nameClaim.trim().length > 0
+      ? nameClaim
+      : (email.split('@')[0] ?? email);
 
   return {
     email,

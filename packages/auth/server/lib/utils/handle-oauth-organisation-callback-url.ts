@@ -2,6 +2,10 @@ import type { Context } from 'hono';
 
 import { sendOrganisationAccountLinkConfirmationEmail } from '@documenso/ee/server-only/lib/send-organisation-account-link-confirmation-email';
 import { AppError } from '@documenso/lib/errors/app-error';
+import {
+  assertGoogleOAuthEmailAllowed,
+  assertGoogleOAuthProviderAllowed,
+} from '@documenso/lib/server-only/auth/get-auth-policy';
 import { onCreateUserHook } from '@documenso/lib/server-only/user/create-user';
 import { formatOrganisationLoginUrl } from '@documenso/lib/utils/organisation-authentication-portal';
 import { prisma } from '@documenso/prisma';
@@ -33,6 +37,9 @@ export const handleOAuthOrganisationCallbackUrl = async (
       bypassEmailVerification: true, // Bypass for organisation OIDC because we manually verify the email.
     },
   });
+
+  assertGoogleOAuthProviderAllowed(clientOptions.id);
+  assertGoogleOAuthEmailAllowed(email);
 
   const allowedDomains = organisation.organisationAuthenticationPortal.allowedDomains;
 

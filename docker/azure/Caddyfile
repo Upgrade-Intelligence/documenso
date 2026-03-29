@@ -1,0 +1,5 @@
+{$DOCUMENSO_HOSTNAME} {
+  encode gzip zstd
+
+  reverse_proxy documenso:3000
+}

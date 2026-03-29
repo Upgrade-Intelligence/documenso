@@ -14,6 +14,7 @@ import { isTwoFactorAuthenticationEnabled } from '@documenso/lib/server-only/2fa
 import { setupTwoFactorAuthentication } from '@documenso/lib/server-only/2fa/setup-2fa';
 import { validateTwoFactorAuthentication } from '@documenso/lib/server-only/2fa/validate-2fa';
 import { viewBackupCodes } from '@documenso/lib/server-only/2fa/view-backup-codes';
+import { assertGoogleOAuthOnlyDisabled } from '@documenso/lib/server-only/auth/get-auth-policy';
 import { createUser } from '@documenso/lib/server-only/user/create-user';
 import { forgotPassword } from '@documenso/lib/server-only/user/forgot-password';
 import { getMostRecentEmailVerificationToken } from '@documenso/lib/server-only/user/get-most-recent-email-verification-token';
@@ -44,6 +45,8 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
    * Authorize endpoint.
    */
   .post('/authorize', sValidator('json', ZSignInSchema), async (c) => {
+    assertGoogleOAuthOnlyDisabled();
+
     const requestMetadata = c.get('requestMetadata');
 
     const { email, password, totpCode, backupCode, csrfToken } = c.req.valid('json');
@@ -142,6 +145,8 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
    * Signup endpoint.
    */
   .post('/signup', sValidator('json', ZSignUpSchema), async (c) => {
+    assertGoogleOAuthOnlyDisabled();
+
     if (env('NEXT_PUBLIC_DISABLE_SIGNUP') === 'true') {
       throw new AppError('SIGNUP_DISABLED', {
         message: 'Signups are disabled.',
@@ -239,6 +244,8 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
    * Forgot password endpoint.
    */
   .post('/forgot-password', sValidator('json', ZForgotPasswordSchema), async (c) => {
+    assertGoogleOAuthOnlyDisabled();
+
     const { email } = c.req.valid('json');
 
     await forgotPassword({
@@ -251,6 +258,8 @@ export const emailPasswordRoute = new Hono<HonoAuthContext>()
    * Reset password endpoint.
    */
   .post('/reset-password', sValidator('json', ZResetPasswordSchema), async (c) => {
+    assertGoogleOAuthOnlyDisabled();
+
     const { token, password } = c.req.valid('json');
 
     const requestMetadata = c.get('requestMetadata');
