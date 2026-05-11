@@ -28,15 +28,29 @@ const getAuthSecret = () => {
 
 /**
  * Generic auth session cookie options.
+ *
+ * Returns a fresh object each call so `maxAge` is always relative to "now".
+ * Previously this was a module-load constant using `expires: new Date(...)`,
+ * which froze the absolute expiration date at boot — every cookie set after
+ * AUTH_SESSION_LIFETIME past container start carried an Expires in the past
+ * and was discarded by the browser, breaking sign-in.
  */
-export const sessionCookieOptions = {
-  httpOnly: true,
-  path: '/',
-  sameSite: useSecureCookies ? 'none' : 'lax',
-  secure: useSecureCookies,
-  domain: getCookieDomain(),
-  expires: new Date(Date.now() + AUTH_SESSION_LIFETIME),
-} as const;
+export const getSessionCookieOptions = () =>
+  ({
+    httpOnly: true,
+    path: '/',
+    sameSite: useSecureCookies ? 'none' : 'lax',
+    secure: useSecureCookies,
+    domain: getCookieDomain(),
+    maxAge: Math.floor(AUTH_SESSION_LIFETIME / 1000),
+  }) as const;
+
+/**
+ * @deprecated Use `getSessionCookieOptions()` instead — this stale constant
+ * captures `Date.now()` at module load, causing cookies to expire after the
+ * container has been running for `AUTH_SESSION_LIFETIME`.
+ */
+export const sessionCookieOptions = getSessionCookieOptions();
 
 export const extractSessionCookieFromHeaders = (headers: Headers): string | null => {
   return extractCookieFromHeaders(sessionCookieName, headers);
@@ -66,7 +80,7 @@ export const setSessionCookie = async (c: Context, sessionToken: string) => {
     sessionCookieName,
     sessionToken,
     getAuthSecret(),
-    sessionCookieOptions,
+    getSessionCookieOptions(),
   ).catch((err) => {
     appLog('SetSessionCookie', `Error setting signed cookie: ${err}`);
 
@@ -81,7 +95,7 @@ export const setSessionCookie = async (c: Context, sessionToken: string) => {
  * @param sessionToken - The session token to set.
  */
 export const deleteSessionCookie = (c: Context) => {
-  deleteCookie(c, sessionCookieName, sessionCookieOptions);
+  deleteCookie(c, sessionCookieName, getSessionCookieOptions());
 };
 
 export const getCsrfCookie = async (c: Context) => {
@@ -94,7 +108,7 @@ export const setCsrfCookie = async (c: Context) => {
   const csrfToken = generateSessionToken();
 
   await setSignedCookie(c, csrfCookieName, csrfToken, getAuthSecret(), {
-    ...sessionCookieOptions,
+    ...getSessionCookieOptions(),
 
     // Explicity set to undefined for session lived cookie.
     expires: undefined,
